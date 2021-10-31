@@ -5,6 +5,7 @@ from tensorflow.keras.datasets import mnist
 import numpy as np
 from tensorflow.python.keras.layers.pooling import MaxPool2D
 import cv2
+import math
 
 # TODO:Rather than having to deal with whatever a idx3-ubyte datatype is im just going to use googles copy of the dataset
 (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
@@ -33,22 +34,25 @@ train_images = train_images.reshape(len(train_images), input_shape[0], input_sha
 test_images = test_images.reshape(len(test_images), input_shape[0], input_shape[1], input_shape[2])
 
 model = models.Sequential() # indicating to keras that I wish to create my model layer by layer
-model.add(layers.Conv2D(16, (5,5), padding='valid', activation='relu', input_shape=(28, 28, 1)))
+model.add(layers.Conv2D(32, (5,5), padding='valid', activation='relu', input_shape=(28, 28, 1)))
+model.add(MaxPool2D(pool_size = (1, 1), strides = 1))
+model.add(layers.Conv2D(32, (3,3), padding='valid', activation='relu'))
 model.add(MaxPool2D(pool_size = (1, 1), strides = 1))
 model.add(layers.Conv2D(16, (3,3), padding='valid', activation='relu'))
-model.add(MaxPool2D(pool_size = (1, 1), strides = 1))
-model.add(layers.Conv2D(8, (3,3), padding='valid', activation='relu'))
+model.add(layers.Dropout(0.2))
 model.add(layers.Flatten())
-model.add(layers.Dense(32, activation='relu'))
+model.add(layers.Dense(64, activation='relu'))
 model.add(layers.Dense(10, activation='softmax'))
 
 model.summary()
 
-gdoptimizer = tensorflow.keras.optimizers.SGD(learning_rate=0.1)#, decay = 0.001)
+gdoptimizer = tensorflow.keras.optimizers.SGD(learning_rate=0.1, decay = 0.005)
 
 model.compile(optimizer=gdoptimizer, loss=tensorflow.keras.losses.SparseCategoricalCrossentropy(from_logits=False), metrics=['accuracy'])
 
-history = model.fit(train_images, train_labels, batch_size = 2048, epochs=10, validation_data=(test_images, test_labels))
+history = model.fit(train_images, train_labels, batch_size = 256, epochs=10, validation_data=(test_images, test_labels))
+
+model.save('cnn_model')
 
 plt.figure()
 plt.plot(history.history['accuracy'], label='accuracy')
@@ -64,9 +68,9 @@ print(test_acc)
 
 custom_sample = []
 
-for i in range(0, 13):  
-    img = cv2.imread(str(i)+".png", cv2.IMREAD_GRAYSCALE)
-    custom_sample.append(img)
+for i in range(0, 10):  
+    gray = cv2.imread(str(i)+".png", cv2.IMREAD_GRAYSCALE)
+    custom_sample.append(gray)
 custom_sample = np.array(custom_sample)
 images = custom_sample.copy()
 
@@ -76,7 +80,7 @@ pred = model.predict(custom_sample)
 print(pred)
 
 plt.figure()
-for i in range(13):
+for i in range(10):
     plt.subplot(4,4,i+1)
     plt.xticks([])
     plt.yticks([])

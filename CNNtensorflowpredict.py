@@ -1,91 +1,36 @@
-import cv2
+import tensorflow
+from tensorflow.keras import datasets, layers, models
 import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
 import numpy as np
+from tensorflow.python.keras.layers.pooling import MaxPool2D
+import cv2
 import math
-from scipy import ndimage
 
-def getBestShift(img):
-    cy,cx = ndimage.measurements.center_of_mass(img)
 
-    rows,cols = img.shape
-    shiftx = np.round(cols/2.0-cx).astype(int)
-    shifty = np.round(rows/2.0-cy).astype(int)
+model = tensorflow.keras.models.load_model('cnn_model')
+model.summary()
 
-    return shiftx,shifty
-
-def shift(img,sx,sy):
-    rows,cols = img.shape
-    M = np.float32([[1,0,sx],[0,1,sy]])
-    shifted = cv2.warpAffine(img,M,(cols,rows))
-    return shifted
-
+input_shape = (28, 28, 1)
 custom_sample = []
 
 for i in range(0, 10):  
     gray = cv2.imread(str(i)+".png", cv2.IMREAD_GRAYSCALE)
-    gray = cv2.resize(255-gray, (28, 28))
-    gray = cv2.GaussianBlur(gray, (3,3), 0)
-    ret, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
-    #gray = cv2.GaussianBlur(gray, (3,3), 0)
-    gray = gray.astype(int) + 128
-    gray[gray == 128] = 0
-    gray = np.clip(gray, 0, 255)
-    gray = gray.astype(np.uint8)
-    while np.sum(gray[0]) == 0:
-        gray = gray[1:]
-
-    while np.sum(gray[:,0]) == 0:
-        gray = np.delete(gray,0,1)
-
-    while np.sum(gray[-1]) == 0:
-        gray = gray[:-1]
-
-    while np.sum(gray[:,-1]) == 0:
-        gray = np.delete(gray,-1,1)
-
-    rows,cols = gray.shape
-
-    if rows > cols:
-        factor = 20.0/rows
-        rows = 20
-        cols = int(round(cols*factor))
-        gray = cv2.resize(gray, (cols,rows))
-    else:
-        factor = 20.0/cols
-        cols = 20
-        rows = int(round(rows*factor))
-        gray = cv2.resize(gray, (cols, rows))
-
-    colsPadding = (int(math.ceil((28-cols)/2.0)),int(math.floor((28-cols)/2.0)))
-    rowsPadding = (int(math.ceil((28-rows)/2.0)),int(math.floor((28-rows)/2.0)))
-    gray = np.lib.pad(gray,(rowsPadding,colsPadding),'constant')
-
-    shiftx,shifty = getBestShift(gray)
-    shifted = shift(gray,shiftx,shifty)
-    gray = shifted
-
     custom_sample.append(gray)
-
 custom_sample = np.array(custom_sample)
 images = custom_sample.copy()
 
+custom_sample = custom_sample.reshape(len(custom_sample), input_shape[0], input_shape[1], input_shape[2])
 
-if rows > cols:
-    factor = 20.0/rows
-    rows = 20
-    cols = int(round(cols*factor))
-    gray = cv2.resize(gray, (cols,rows))
-else:
-    factor = 20.0/cols
-    cols = 20
-    rows = int(round(rows*factor))
-    gray = cv2.resize(gray, (cols, rows))
+pred = model.predict(custom_sample)
+print(pred)
 
 plt.figure()
 for i in range(10):
-    plt.subplot(4,3,i+1)
+    plt.subplot(4,4,i+1)
     plt.xticks([])
     plt.yticks([])
     plt.imshow(images[i], cmap='gray')
-    plt.xlabel("test")
+    plt.xlabel(str(np.argmax(pred[i])) + " " + str(np.max(pred[i])))
 plt.show()
+
